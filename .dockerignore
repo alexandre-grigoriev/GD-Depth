@@ -1,0 +1,25 @@
+# Dependencies — rebuilt inside the image
+**/node_modules/
+frontend/dist/
+
+# Git
+.git/
+.gitignore
+
+# Dev & test artifacts
+tests/
+*.log
+
+# Secrets and runtime data — never bake into the image
+backend/.env
+backend/users.db
+docker/data/
+
+# Python prototype — not part of the Docker image
+python/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

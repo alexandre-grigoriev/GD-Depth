@@ -1,0 +1,36 @@
+# Dependencies
+**/node_modules/
+
+# Build output
+frontend/dist/
+frontend/dist-ssr/
+
+# Environment & secrets — never commit
+backend/.env
+backend/.env.local
+docker/data/
+
+# Runtime data
+backend/users.db
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Python — exclude all settings files (contain AWS credentials)
+python/settings.json
+python/res/
+python/.venv/
+python/__pycache__/
+python/*.py[cod]
+python/images/*
+python/tmp_images/*
+python/res/pymupdf4llm_updated/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
