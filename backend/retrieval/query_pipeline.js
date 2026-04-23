@@ -9,8 +9,10 @@ import { retrieveFromKB }    from '../aws/bedrock.js';
 import { imagePublicUrl }    from '../aws/s3.js';
 import { getDocumentsByIds } from '../graph/queries/document.js';
 
-const DEFAULT_TOP_K = 10;
-const IMG_TOKEN_RE  = /\[img:([^\]]+)\]/g;
+const DEFAULT_TOP_K  = 10;
+const IMG_TOKEN_RE   = /\[img:([^\]]+)\]/g;
+// Legacy token from the Python pipeline: [imageurl:filename.png]
+const IMG_LEGACY_RE  = /\[imageurl:([^\]]+\.(?:jpg|jpeg|png|gif|bmp|webp))\]/gi;
 
 function extractDocId(sourceUri) {
   if (!sourceUri) return null;
@@ -42,7 +44,14 @@ export async function searchKnowledgeBase(query, topK = DEFAULT_TOP_K) {
     for (const [, key] of r.text.matchAll(IMG_TOKEN_RE)) {
       images.push(imagePublicUrl(key));
     }
-    const cleanText = r.text.replace(IMG_TOKEN_RE, '').replace(/\s+/g, ' ').trim();
+    // Also extract legacy Python [imageurl:filename.png] tokens
+    for (const [, filename] of r.text.matchAll(IMG_LEGACY_RE)) {
+      images.push(imagePublicUrl(filename));
+    }
+    const cleanText = r.text
+      .replace(IMG_TOKEN_RE, '')
+      .replace(IMG_LEGACY_RE, '[$1]')   // keep filename as [name.png] so Claude can cite it
+      .replace(/\s+/g, ' ').trim();
 
     const docId = extractDocId(r.sourceUri);
     const doc   = docId ? docMeta.get(docId) : null;

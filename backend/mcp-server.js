@@ -1,11 +1,11 @@
 /**
- * mcp-server.js — Astra Docs MCP server (stdio transport, HTTP mode)
+ * mcp-server.js — GD Depth MCP server (stdio transport, HTTP mode)
  *
- * Connects to a running Astra Docs backend (local or production) via HTTP.
+ * Connects to a running GD Depth backend (local or production) via HTTP.
  * No source code or Neo4j access required on the developer's machine.
  *
  * Configuration (environment variables):
- *   ASTRA_BASE_URL   — base URL of the Astra Docs backend (default: http://localhost:3001)
+ *   ASTRA_BASE_URL   — base URL of the GD Depth backend (default: http://localhost:3001)
  *   ASTRA_MCP_TOKEN  — shared secret set as MCP_SECRET on the server
  *
  * Tools:
@@ -48,7 +48,7 @@ async function api(method, path, body) {
 
 // ── Server definition ─────────────────────────────────────────────────────────
 const server = new Server(
-  { name: "astra-docs", version: "1.0.0" },
+  { name: "gd-depth-docs", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -58,7 +58,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "search_docs",
       description:
-        "Search the HORIBA Astra Docs knowledge base using semantic RAG retrieval. " +
+        "Search the HORIBA GD Depth knowledge base using semantic RAG retrieval. " +
         "Returns the most relevant documentation chunks with their source filenames.",
       inputSchema: {
         type: "object",
@@ -72,7 +72,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "list_documents",
       description:
-        "List all documents in the Astra Docs knowledge base with metadata " +
+        "List all documents in the GD Depth knowledge base with metadata " +
         "(filename, language, summary, upload date, word count, chunk count).",
       inputSchema: { type: "object", properties: {} },
     },

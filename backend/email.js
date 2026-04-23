@@ -94,13 +94,13 @@ function verificationEmailHtml(name, verifyUrl) {
       <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <tr><td style="background:#1677ff;padding:28px 36px;">
           <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">HORIBA</span>
-          <span style="font-size:13px;color:rgba(255,255,255,0.75);margin-left:10px;">Astra Docs</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);margin-left:10px;">GD Depth</span>
         </td></tr>
         <tr><td style="padding:36px 36px 24px;">
           <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">Verify your email</p>
           <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">Hello${name ? " " + name : ""},</p>
           <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-            Thanks for registering on Astra Docs.<br>
+            Thanks for registering on GD Depth.<br>
             Click the button below to confirm your email address. An administrator will then validate your access.
           </p>
           <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
@@ -112,7 +112,7 @@ function verificationEmailHtml(name, verifyUrl) {
           <p style="margin:16px 0 0;font-size:12px;color:#d1d5db;word-break:break-all;">Or copy this link: ${verifyUrl}</p>
         </td></tr>
         <tr><td style="padding:20px 36px;border-top:1px solid #f3f5f7;font-size:12px;color:#9ca3af;">
-          HORIBA FRANCE · AI LAB &nbsp;·&nbsp; Astra Docs &nbsp;·&nbsp; Do not reply to this email.
+          HORIBA FRANCE · AI LAB &nbsp;·&nbsp; GD Depth &nbsp;·&nbsp; Do not reply to this email.
         </td></tr>
       </table>
     </td></tr>
@@ -129,23 +129,23 @@ function approvalEmailHtml(name) {
       <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <tr><td style="background:#478cd0;padding:28px 36px;">
           <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">HORIBA</span>
-          <span style="font-size:13px;color:rgba(255,255,255,0.75);margin-left:10px;">Astra Docs</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);margin-left:10px;">GD Depth</span>
         </td></tr>
         <tr><td style="padding:36px 36px 24px;">
           <p style="margin:0 0 16px;font-size:22px;font-weight:700;color:#111827;">Access granted</p>
           <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
             Hello${name ? " " + name : ""},<br><br>
-            Your Astra Docs account has been <strong>approved</strong> by an administrator.<br>
+            Your GD Depth account has been <strong>approved</strong> by an administrator.<br>
             You can now sign in and access the documentation assistant.
           </p>
           <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
             <tr><td style="background:#478cd0;border-radius:8px;">
-              <a href="${FRONTEND_ORIGIN}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Sign in to Astra Docs</a>
+              <a href="${FRONTEND_ORIGIN}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Sign in to GD Depth</a>
             </td></tr>
           </table>
         </td></tr>
         <tr><td style="padding:20px 36px;border-top:1px solid #f3f5f7;font-size:12px;color:#9ca3af;">
-          HORIBA FRANCE · AI LAB &nbsp;·&nbsp; Astra Docs &nbsp;·&nbsp; Do not reply to this email.
+          HORIBA FRANCE · AI LAB &nbsp;·&nbsp; GD Depth &nbsp;·&nbsp; Do not reply to this email.
         </td></tr>
       </table>
     </td></tr>
@@ -162,18 +162,18 @@ function rejectionEmailHtml(name) {
       <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <tr><td style="background:#478cd0;padding:28px 36px;">
           <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">HORIBA</span>
-          <span style="font-size:13px;color:rgba(255,255,255,0.75);margin-left:10px;">Astra Docs</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);margin-left:10px;">GD Depth</span>
         </td></tr>
         <tr><td style="padding:36px 36px 24px;">
           <p style="margin:0 0 16px;font-size:22px;font-weight:700;color:#111827;">Access request declined</p>
           <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
             Hello${name ? " " + name : ""},<br><br>
-            Unfortunately your request to access Astra Docs has been <strong>declined</strong> by an administrator.<br>
+            Unfortunately your request to access GD Depth has been <strong>declined</strong> by an administrator.<br>
             If you believe this is an error, please contact your administrator directly.
           </p>
         </td></tr>
         <tr><td style="padding:20px 36px;border-top:1px solid #f3f5f7;font-size:12px;color:#9ca3af;">
-          HORIBA FRANCE · AI LAB &nbsp;·&nbsp; Astra Docs &nbsp;·&nbsp; Do not reply to this email.
+          HORIBA FRANCE · AI LAB &nbsp;·&nbsp; GD Depth &nbsp;·&nbsp; Do not reply to this email.
         </td></tr>
       </table>
     </td></tr>
@@ -187,7 +187,7 @@ export async function sendApprovalEmail(email, name) {
   console.log("To:", email);
   console.log("─────────────────────────────────────────────────\n");
   try {
-    await sendMail({ to: email, subject: "Your Astra Docs access has been approved", html: approvalEmailHtml(name) });
+    await sendMail({ to: email, subject: "Your GD Depth access has been approved", html: approvalEmailHtml(name) });
     console.log("✓ Approval email sent to", email);
   } catch (err) {
     console.error("✗ Email send failed:", err.message);
@@ -199,7 +199,7 @@ export async function sendRejectionEmail(email, name) {
   console.log("To:", email);
   console.log("─────────────────────────────────────────────────\n");
   try {
-    await sendMail({ to: email, subject: "Your Astra Docs access request", html: rejectionEmailHtml(name) });
+    await sendMail({ to: email, subject: "Your GD Depth access request", html: rejectionEmailHtml(name) });
     console.log("✓ Rejection email sent to", email);
   } catch (err) {
     console.error("✗ Email send failed:", err.message);
@@ -215,12 +215,12 @@ export async function sendAdminNewLdapUserEmail(userName, userEmail, adminEmails
       <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <tr><td style="background:#1677ff;padding:28px 36px;">
           <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">HORIBA</span>
-          <span style="font-size:13px;color:rgba(255,255,255,0.75);margin-left:10px;">Astra Docs</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.75);margin-left:10px;">GD Depth</span>
         </td></tr>
         <tr><td style="padding:36px 36px 24px;">
           <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">New access request</p>
           <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-            A HORIBA user has just authenticated and is requesting access to Astra Docs:<br><br>
+            A HORIBA user has just authenticated and is requesting access to GD Depth:<br><br>
             <strong>${userName || userEmail}</strong>${userName ? ` &lt;${userEmail}&gt;` : ""}
           </p>
           <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
@@ -228,12 +228,12 @@ export async function sendAdminNewLdapUserEmail(userName, userEmail, adminEmails
           </p>
           <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
             <tr><td style="background:#1677ff;border-radius:8px;">
-              <a href="${FRONTEND_ORIGIN}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Open Astra Docs</a>
+              <a href="${FRONTEND_ORIGIN}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">Open GD Depth</a>
             </td></tr>
           </table>
         </td></tr>
         <tr><td style="padding:20px 36px;border-top:1px solid #f3f5f7;font-size:12px;color:#9ca3af;">
-          HORIBA FRANCE · AI LAB &nbsp;·&nbsp; Astra Docs &nbsp;·&nbsp; Do not reply to this email.
+          HORIBA FRANCE · AI LAB &nbsp;·&nbsp; GD Depth &nbsp;·&nbsp; Do not reply to this email.
         </td></tr>
       </table>
     </td></tr>
@@ -264,7 +264,7 @@ export async function sendVerificationEmail(email, name, token) {
   console.log("Link:", verifyUrl);
   console.log("─────────────────────────────────────────────────\n");
   try {
-    await sendMail({ to: email, subject: "Confirm your Astra Docs account", html: verificationEmailHtml(name, verifyUrl) });
+    await sendMail({ to: email, subject: "Confirm your GD Depth account", html: verificationEmailHtml(name, verifyUrl) });
     console.log("✓ Verification email sent to", email);
   } catch (err) {
     console.error("✗ Email send failed:", err.message);

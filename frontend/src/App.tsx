@@ -370,8 +370,9 @@ export default function App() {
       const botMsg: ChatMessage = { id: makeId(), role: "assistant", text: response, timestamp: now(), images };
       setChatMessages((prev) => ({ ...prev, [chatId!]: [...(prev[chatId!] ?? []), botMsg] }));
       await saveMessage(chatId!, botMsg);
-    } catch {
-      const errMsg: ChatMessage = { id: makeId(), role: "assistant", text: "Sorry, an error occurred. Please try again.", timestamp: now() };
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      const errMsg: ChatMessage = { id: makeId(), role: "assistant", text: `Sorry, an error occurred: ${detail}`, timestamp: now() };
       setChatMessages((prev) => ({ ...prev, [chatId!]: [...(prev[chatId!] ?? []), errMsg] }));
       await saveMessage(chatId!, errMsg);
     } finally {
@@ -395,7 +396,7 @@ export default function App() {
           <div className="brandLeft">
             <img className="brandHoriba" src="/screen logo Horiba.png" alt="HORIBA" />
           </div>
-          <span className="brandName">Astra Docs</span>
+          <span className="brandName">GD Depth</span>
 
           <div className="topRight" ref={userMenuRef}>
             <TopSelect imgSrc="/language.png" value={lang} options={LANGS} onChange={setLang} />
@@ -596,7 +597,7 @@ export default function App() {
         />
       </main>
 
-      <div className="footerNote">Astra Docs — HORIBA FRANCE 2026 — Powered by AI</div>
+      <div className="footerNote">GD Depth — HORIBA FRANCE 2026 — Powered by AI</div>
 
       {addPdfOpen && <AddPdfDialog open={addPdfOpen} onClose={() => setAddPdfOpen(false)} />}
 

@@ -89,7 +89,7 @@ export function ChatPanel({
                   {m.role === "assistant" && m.images && m.images.length > 0 && (
                     <div className="msgImages">
                       {m.images.map((url) => {
-                        const title = url.split("/").pop()?.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ") ?? "";
+                        const title = decodeURIComponent(url.split("/").pop() ?? "").replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
                         return (
                         <figure key={url} className="msgImageFigure">
                           <img

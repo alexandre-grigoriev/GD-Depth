@@ -9,27 +9,27 @@ export const LANGS = [
 
 export const UI_STRINGS: Record<string, { welcome: string; error: string }> = {
   en: {
-    welcome: "Hello! I'm your Astra Docs assistant. Ask me anything about the documentation.",
+    welcome: "Hello! I'm your GD Depth assistant. Ask me anything about the documentation.",
     error: "Sorry, I encountered an error. Please try again.",
   },
   fr: {
-    welcome: "Bonjour\u00a0! Je suis votre assistant Astra Docs. Posez-moi vos questions sur la documentation.",
+    welcome: "Bonjour\u00a0! Je suis votre assistant GD Depth. Posez-moi vos questions sur la documentation.",
     error: "Désolé, une erreur s'est produite. Veuillez réessayer.",
   },
   ar: {
-    welcome: "مرحباً! أنا مساعد Astra Docs. اسألني أي شيء عن الوثائق.",
+    welcome: "مرحباً! أنا مساعد GD Depth. اسألني أي شيء عن الوثائق.",
     error: "عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.",
   },
   ja: {
-    welcome: "こんにちは！Astra Docsのアシスタントです。ドキュメントについて何でもお聞きください。",
+    welcome: "こんにちは！GD Depthのアシスタントです。ドキュメントについて何でもお聞きください。",
     error: "エラーが発生しました。もう一度お試しください。",
   },
   zh: {
-    welcome: "您好！我是 Astra Docs 助手。请随时向我询问有关文档的问题。",
+    welcome: "您好！我是 GD Depth 助手。请随时向我询问有关文档的问题。",
     error: "抱歉，发生了错误。请再试一次。",
   },
   ru: {
-    welcome: "Здравствуйте! Я ваш ассистент Astra Docs. Задайте мне любой вопрос по документации.",
+    welcome: "Здравствуйте! Я ваш ассистент GD Depth. Задайте мне любой вопрос по документации.",
     error: "Извините, произошла ошибка. Пожалуйста, попробуйте ещё раз.",
   },
 };

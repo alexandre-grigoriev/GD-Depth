@@ -30,16 +30,14 @@ router.post("/api/chat", requireAuth, express.json(), async (req, res) => {
     const chunkFiles  = translated.map(c => c.filename ?? null);
     const chunkImages = translated.map(c => c.images   ?? []);
 
-    // Collect images from top-2 unique source files
-    const seenFiles = new Set();
-    const topFiles  = [];
-    for (const f of chunkFiles) {
-      if (f && !seenFiles.has(f)) { seenFiles.add(f); topFiles.push(f); }
-      if (topFiles.length === 2) break;
+    // Build filename → URL map for post-response filtering
+    const imageUrlByFilename = new Map();
+    for (const urls of chunkImages) {
+      for (const url of urls) {
+        const filename = decodeURIComponent(url.split('/').pop() ?? '');
+        if (filename) imageUrlByFilename.set(filename, url);
+      }
     }
-    const images = [...new Set(
-      chunkFiles.flatMap((f, i) => topFiles.includes(f ?? "") ? (chunkImages[i] ?? []) : [])
-    )];
 
     // 2. Build system prompt
     let system = "You are a smart documentation assistant. Be concise and helpful. Format your answers using markdown (use **bold**, bullet lists, etc.) when appropriate.\n";
@@ -52,7 +50,7 @@ router.post("/api/chat", requireAuth, express.json(), async (req, res) => {
 
       system += `\nKnowledge base context (use this as primary source):\n${context}\n`;
       system += "Each passage is labeled with its source filename in brackets. When citing, reference the document by its filename exactly as shown. ";
-      if (images.length) system += "Relevant diagrams are displayed automatically to the user. Do not say there are no images. ";
+      if (imageUrlByFilename.size) system += "Relevant diagrams are displayed automatically to the user. Do not say there are no images. ";
       system += "If the answer is in the knowledge base, base your answer strictly on it. If not found, say so clearly.\n";
     }
 
@@ -65,6 +63,11 @@ router.post("/api/chat", requireAuth, express.json(), async (req, res) => {
 
     // 4. Call Claude
     const text = await callClaude(prompt, { maxTokens: 2000 });
+
+    // Only show images whose filename Claude cited in its response
+    const cited = [...text.matchAll(/\[([^\]]+\.(?:png|jpg|jpeg|gif|bmp|webp))\]/gi)]
+      .map(m => m[1]);
+    const images = [...new Set(cited.map(f => imageUrlByFilename.get(f)).filter(Boolean))];
 
     logger.info("Chat completion", { chunksUsed: translated.length, imagesAttached: images.length });
     res.json({ text, images });

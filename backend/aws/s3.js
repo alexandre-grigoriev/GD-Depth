@@ -81,5 +81,6 @@ export async function deleteImage(key) {
  * @returns {string}
  */
 export function imagePublicUrl(key) {
-  return `https://${config.S3_IMAGES_BUCKET}.s3.${config.AWS_REGION}.amazonaws.com/${key}`;
+  const encoded = key.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return `https://${config.S3_IMAGES_BUCKET}.s3.${config.AWS_REGION}.amazonaws.com/${encoded}`;
 }
