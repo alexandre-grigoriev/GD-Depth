@@ -40,7 +40,7 @@ router.post("/api/chat", requireAuth, express.json(), async (req, res) => {
     }
 
     // 2. Build system prompt
-    let system = "You are a smart documentation assistant. Be concise and helpful. Format your answers using markdown (use **bold**, bullet lists, etc.) when appropriate.\n";
+    let system = "You are a smart documentation assistant. Be concise and helpful. Format your answers using markdown: use ## for section titles, ### for subsections, **bold**, bullet lists, etc. Always use markdown headers for section titles — never leave them as plain unformatted text. When referencing an image, place its reference on its own line, not in the middle of a sentence (e.g. write the sentence ending with a colon, then the image reference on the next line).\n";
 
     if (translated.length) {
       const context = translated.map((c, i) => {
@@ -72,6 +72,9 @@ router.post("/api/chat", requireAuth, express.json(), async (req, res) => {
       const alt = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
       renderedText = renderedText.replaceAll(match, `\n\n![${alt}](${url})\n\n`);
     }
+    // Clean up orphaned ":" lines left after image extraction (e.g. "sentence\n\n![img](url)\n\n :")
+    renderedText = renderedText.replace(/\n\n(!\[[^\]]*\]\([^)]+\))\n\n\s*:\s*\n/g, '\n\n$1\n\n');
+    renderedText = renderedText.replace(/^\s*:\s*$/gm, '');
 
     logger.info("Chat completion", { chunksUsed: translated.length, imagesReplaced: imageUrlByFilename.size });
     res.json({ text: renderedText, images: [] });
