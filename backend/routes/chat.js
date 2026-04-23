@@ -64,13 +64,17 @@ router.post("/api/chat", requireAuth, express.json(), async (req, res) => {
     // 4. Call Claude
     const text = await callClaude(prompt, { maxTokens: 2000 });
 
-    // Only show images whose filename Claude cited in its response
-    const cited = [...text.matchAll(/\[([^\]]+\.(?:png|jpg|jpeg|gif|bmp|webp))\]/gi)]
-      .map(m => m[1]);
-    const images = [...new Set(cited.map(f => imageUrlByFilename.get(f)).filter(Boolean))];
+    // Replace [filename.png] citations with inline markdown images
+    let renderedText = text;
+    for (const [match, filename] of text.matchAll(/\[([^\]]+\.(?:png|jpg|jpeg|gif|bmp|webp))\]/gi)) {
+      const url = imageUrlByFilename.get(filename);
+      if (!url) continue;
+      const alt = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      renderedText = renderedText.replaceAll(match, `\n\n![${alt}](${url})\n\n`);
+    }
 
-    logger.info("Chat completion", { chunksUsed: translated.length, imagesAttached: images.length });
-    res.json({ text, images });
+    logger.info("Chat completion", { chunksUsed: translated.length, imagesReplaced: imageUrlByFilename.size });
+    res.json({ text: renderedText, images: [] });
   } catch (err) {
     logger.error("Chat error", { error: err.message });
     res.status(500).json({ error: err.message });

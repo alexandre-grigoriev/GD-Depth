@@ -143,7 +143,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter,
 
 /* ===== Message images ===== */
 .msgImages { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; max-width: 95%; }
-.msgImageFigure { display: flex; flex-direction: column; gap: 4px; width: fit-content; max-width: 50%; }
+.msgImageFigure { display: flex; flex-direction: column; gap: 4px; width: fit-content; max-width: 50%; margin: 8px 0; }
 .msgImage { max-width: 100%; width: auto; height: auto; border-radius: 8px; border: 1px solid var(--border); cursor: zoom-in; display: block; }
 .msgImageCaption { font-size: 0.875rem; color: #6b7280; text-align: center; font-style: italic; font-weight: 600; }
 

@@ -84,7 +84,14 @@ export function ChatPanel({
                 </div>
                 <div className={cn("msgBubble", m.role === "user" ? "msgBubbleUser" : "msgBubbleAsst")}>
                   {m.role === "assistant"
-                    ? <div className="mdContent"><ReactMarkdown>{m.text}</ReactMarkdown></div>
+                    ? <div className="mdContent"><ReactMarkdown components={{
+                        img: ({ src, alt }) => src ? (
+                          <figure className="msgImageFigure">
+                            <img src={src} alt={alt ?? ""} className="msgImage" onClick={() => setLightboxUrl(src)} />
+                            {alt && <figcaption className="msgImageCaption">{alt}</figcaption>}
+                          </figure>
+                        ) : null,
+                      }}>{m.text}</ReactMarkdown></div>
                     : m.text}
                   {m.role === "assistant" && m.images && m.images.length > 0 && (
                     <div className="msgImages">
@@ -92,12 +99,7 @@ export function ChatPanel({
                         const title = decodeURIComponent(url.split("/").pop() ?? "").replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
                         return (
                         <figure key={url} className="msgImageFigure">
-                          <img
-                            src={url}
-                            alt={title}
-                            className="msgImage"
-                            onClick={() => setLightboxUrl(url)}
-                          />
+                          <img src={url} alt={title} className="msgImage" onClick={() => setLightboxUrl(url)} />
                           {title && <figcaption className="msgImageCaption">{title}</figcaption>}
                         </figure>
                         );
