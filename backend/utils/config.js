@@ -65,5 +65,5 @@ export const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
 };
 
-export const SUPPORTED_EXTS = ['pdf', 'md', 'markdown', 'docx'];
+export const SUPPORTED_EXTS = ['pdf', 'md', 'markdown', 'docx', 'txt', 'pptx', 'ppt'];
 export const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'tiff', 'tif']);

@@ -68,6 +68,12 @@ export async function resetDocuments() {
   logger.info('Knowledge base reset');
 }
 
+/** Overwrites the summary and image-key list for an existing document. */
+export function updateDocumentPreview(docId, summary, images) {
+  db.prepare('UPDATE documents SET summary = ?, images = ? WHERE id = ?')
+    .run(summary ?? '', JSON.stringify(images ?? []), docId);
+}
+
 export function findDocumentIdsByFilepath(filepath) {
   return db.prepare('SELECT id FROM documents WHERE filepath = ?').all(filepath).map(r => r.id);
 }

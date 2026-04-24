@@ -5,8 +5,8 @@
  * No source code or Neo4j access required on the developer's machine.
  *
  * Configuration (environment variables):
- *   ASTRA_BASE_URL   — base URL of the GD Depth backend (default: http://localhost:3001)
- *   ASTRA_MCP_TOKEN  — shared secret set as MCP_SECRET on the server
+ *   GD_DEPTH_BASE_URL   — base URL of the GD Depth backend (default: http://localhost:3001)
+ *   GD_DEPTH_MCP_TOKEN  — shared secret set as MCP_SECRET on the server
  *
  * Tools:
  *   search_docs       — RAG query, returns ranked chunks + source filenames
@@ -20,8 +20,8 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-const BASE_URL  = (process.env.ASTRA_BASE_URL  || "http://localhost:3001").replace(/\/$/, "");
-const MCP_TOKEN = process.env.ASTRA_MCP_TOKEN  || "";
+const BASE_URL  = (process.env.GD_DEPTH_BASE_URL  || "http://localhost:3001").replace(/\/$/, "");
+const MCP_TOKEN = process.env.GD_DEPTH_MCP_TOKEN || "";
 
 // ── HTTP helper ───────────────────────────────────────────────────────────────
 async function api(method, path, body) {

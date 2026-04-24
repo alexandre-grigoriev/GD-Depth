@@ -7,7 +7,7 @@
  * imagePublicUrl(key)           — returns the HTTPS URL for a stored image.
  */
 
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 
@@ -80,6 +80,19 @@ export async function deleteImage(key) {
  * @param {string} key
  * @returns {string}
  */
+/**
+ * Downloads an enriched markdown document from the KB S3 bucket and returns it as a string.
+ *
+ * @param {string} key
+ * @returns {Promise<string>}
+ */
+export async function downloadDocument(key) {
+  const res    = await s3.send(new GetObjectCommand({ Bucket: config.S3_BUCKET, Key: key }));
+  const chunks = [];
+  for await (const chunk of res.Body) chunks.push(chunk);
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 export function imagePublicUrl(key) {
   const encoded = key.split('/').map(segment => encodeURIComponent(segment)).join('/');
   return `https://${config.S3_IMAGES_BUCKET}.s3.${config.AWS_REGION}.amazonaws.com/${encoded}`;

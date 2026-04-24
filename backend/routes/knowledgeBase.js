@@ -18,8 +18,10 @@ import crypto from "crypto";
 import { requireAuth, requireAdmin, requireContributor } from "../shared.js";
 import { ingestDocument } from "../ingestion/pipeline.js";
 import { searchKnowledgeBase, translateChunks } from "../retrieval/query_pipeline.js";
-import { listDocuments, deleteDocument, resetDocuments, findDocumentIdsByFilepath, getDocumentImagesByFilename } from "../graph/queries/document.js";
+import { listDocuments, deleteDocument, resetDocuments, findDocumentIdsByFilepath, getDocumentImagesByFilename, updateDocumentPreview } from "../graph/queries/document.js";
 import { SUPPORTED_EXTS, IMAGE_EXTS } from "../utils/config.js";
+import { downloadDocument } from "../aws/s3.js";
+import { generateDocumentSummary } from "../ingestion/enricher.js";
 import { logger } from "../utils/logger.js";
 
 export const router = express.Router();
@@ -69,7 +71,7 @@ function _sseFinish(jobId) {
 
 router.post("/api/knowledge-base/upload", requireAuth, requireContributor, kbUpload.any(), async (req, res) => {
   const file = req.files?.[0];
-  if (!file) return res.status(400).json({ error: "File required (pdf, md, docx)" });
+  if (!file) return res.status(400).json({ error: "File required (pdf, md, docx, txt, pptx)" });
   try {
     const filename     = Buffer.from(file.originalname, "latin1").toString("utf8");
     const documentDate = req.body.documentDate?.trim() || null;
@@ -115,14 +117,15 @@ router.post("/api/knowledge-base/upload-batch", requireAuth, requireContributor,
         for (const [zipPath, zipEntry] of entries) {
           const innerExt = zipPath.toLowerCase().split(".").pop();
           if (!SUPPORTED_EXTS.includes(innerExt)) continue;
+          // Flatten: ignore ZIP folder structure, use basename only
           const basename  = zipPath.split("/").pop();
           const zipDir    = zipPath.split("/").slice(0, -1).join("/");
           const entryDate = zipEntry.date ? zipEntry.date.toISOString().slice(0, 10) : null;
           _sseEmit(jobId, "processing", { filename: basename });
           try {
-            await purgeByFilepath(zipPath);
+            await purgeByFilepath(basename);
             const buf = await zipEntry.async("nodebuffer");
-            const r   = await ingestDocument({ buffer: buf, filename: basename, uploadedBy: userId, documentDate: entryDate, zipImages, zipDir, filepath: zipPath });
+            const r   = await ingestDocument({ buffer: buf, filename: basename, uploadedBy: userId, documentDate: entryDate, zipImages, zipDir, filepath: basename });
             _sseEmit(jobId, "file_done", { filename: basename, chunkCount: r.chunkCount });
           } catch (e) {
             _sseEmit(jobId, "file_error", { filename: basename, error: e.message });
@@ -246,6 +249,57 @@ router.delete("/api/knowledge-base/reset", requireAuth, requireAdmin, async (_re
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── Regenerate previews ────────────────────────────────────────────────────────
+// Strategy: always overwrite — regenerates summary + image list for every
+// document that has an s3Key, regardless of whether a summary already exists.
+
+router.post("/api/knowledge-base/regenerate-previews", requireAuth, requireAdmin, (req, res) => {
+  const jobId = crypto.randomUUID();
+  _jobs.set(jobId, { res: null, queue: [], done: false });
+  res.json({ jobId });
+
+  (async () => {
+    const docs  = listDocuments().filter(d => d.s3Key);
+    const total = docs.length;
+
+    for (let i = 0; i < docs.length; i++) {
+      const doc = docs[i];
+      _sseEmit(jobId, "regen_progress", { filename: doc.filename, done: i, total });
+      try {
+        const markdown  = await downloadDocument(doc.s3Key);
+        const imageKeys = [...markdown.matchAll(/\[img:([^\]]+)\]/g)].map(m => m[1]);
+        const cleanText = markdown.replace(/\[img:[^\]]+\]/g, '').replace(/\s+/g, ' ').trim();
+        const summary   = await generateDocumentSummary(cleanText.slice(0, 3000));
+        updateDocumentPreview(doc.id, summary, imageKeys);
+        _sseEmit(jobId, "regen_progress", { filename: doc.filename, done: i + 1, total, ok: true });
+      } catch (err) {
+        logger.warn("Regenerate preview failed", { docId: doc.id, error: err.message });
+        _sseEmit(jobId, "regen_progress", { filename: doc.filename, done: i + 1, total, ok: false, error: err.message });
+      }
+    }
+    _sseFinish(jobId);
+  })();
+});
+
+router.get("/api/knowledge-base/regenerate-progress/:jobId", requireAuth, requireAdmin, (req, res) => {
+  const job = _jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: "Job not found" });
+
+  res.setHeader("Content-Type",  "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection",    "keep-alive");
+  res.flushHeaders();
+
+  job.res = res;
+  for (const msg of job.queue) res.write(msg);
+  job.queue = [];
+
+  if (job.done) { res.write(`event: done\ndata: {}\n\n`); res.end(); return; }
+
+  const heartbeat = setInterval(() => { if (!res.writableEnded) res.write(": ping\n\n"); }, 15_000);
+  req.on("close", () => { clearInterval(heartbeat); if (_jobs.has(req.params.jobId)) _jobs.get(req.params.jobId).res = null; });
 });
 
 // ── Search ─────────────────────────────────────────────────────────────────────

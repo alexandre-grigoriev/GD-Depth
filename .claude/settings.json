@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "gd-depth": {
+      "command": "node",
+      "args": ["e:\\Projects\\GD Depth\\backend\\mcp-server.js"],
+      "env": {
+        "GD_DEPTH_BASE_URL": "https://172.31.14.92:5238",
+        "GD_DEPTH_MCP_TOKEN": "gd-depth-mcp-horiba-2026",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    },
+    "astra-docs": {
+      "command": "node",
+      "args": ["e:\\Projects\\Astra Docs\\backend\\mcp-server.js"],
+      "env": {
+        "ASTRA_BASE_URL": "https://172.31.14.92:5234",
+        "ASTRA_MCP_TOKEN": "astra-mcp-horiba-2026",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    }
+  }
+}

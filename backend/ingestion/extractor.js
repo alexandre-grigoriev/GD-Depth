@@ -1,107 +1,100 @@
 /**
- * ingestion/extractor.js — text extraction from PDF, Markdown, DOCX.
- *
- * Returns { text, imageRefs, mimeType } per RAG_PIPELINE.md A.1.
- * All IMAGE_REF tokens are preserved for position-aware chunking.
+ * ingestion/extractor.js — text extraction from PDF, Markdown, DOCX, TXT, PPTX/PPT.
  */
 
 import pdfParse from 'pdf-parse';
 import mammoth  from 'mammoth';
-import { renderGraphvizBlocks } from './graphviz_renderer.js';
+import JSZip    from 'jszip';
 
-/**
- * @typedef {object} ExtractionResult
- * @property {string}             text            - extracted and normalised text
- * @property {string[]}           imageRefs       - all [IMAGE_REF:path] tokens found (MD only)
- * @property {'pdf'|'md'|'docx'}  mimeType
- * @property {Map<string,Buffer>} generatedImages - SVG buffers from graphviz blocks (MD only)
- */
-
-/**
- * Extracts text from a file buffer.
- *
- * @param {Buffer} fileBuffer
- * @param {string} filename
- * @returns {Promise<ExtractionResult>}
- */
 export async function extractText(fileBuffer, filename) {
   const ext = filename.toLowerCase().split('.').pop();
 
-  if (ext === 'pdf')  return extractPdf(fileBuffer);
-  if (ext === 'md' || ext === 'markdown') return await extractMarkdown(fileBuffer);
-  if (ext === 'docx') return extractDocx(fileBuffer);
+  if (ext === 'pdf')                       return extractPdf(fileBuffer);
+  if (ext === 'md' || ext === 'markdown')  return extractMarkdown(fileBuffer);
+  if (ext === 'docx')                      return extractDocx(fileBuffer);
+  if (ext === 'txt')                       return extractTxt(fileBuffer);
+  if (ext === 'pptx' || ext === 'ppt')     return extractPptx(fileBuffer);
 
-  throw new Error(`Unsupported file type: .${ext}. Supported: .pdf, .md, .docx`);
+  throw new Error(`Unsupported file type: .${ext}. Supported: pdf, md, docx, txt, pptx`);
 }
 
-// ---------------------------------------------------------------------------
+// ── PDF ────────────────────────────────────────────────────────────────────────
 
 async function extractPdf(buffer) {
   const parsed = await pdfParse(buffer);
-  // Strip control characters (except \n, \t) and normalize whitespace
   let text = parsed.text
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/[ \t]+/g, ' ');
-  text = normalise(text);
-  return { text, imageRefs: [], mimeType: 'pdf' };
+  return { text: normalise(text), imageRefs: [], generatedImages: new Map(), dotContent: '', mimeType: 'pdf' };
 }
+
+// ── Markdown ───────────────────────────────────────────────────────────────────
 
 async function extractMarkdown(buffer) {
   let text = buffer.toString('utf8');
 
-  // Strip YAML front matter (--- blocks at top of file)
+  // Strip YAML front matter
   text = text.replace(/^---[\s\S]*?---\s*\n?/, '');
 
-  // Capture DOT source content BEFORE rendering so it can be used in the
-  // document summary even when there is no other text in the file.
-  const dotSources = [];
-  text.replace(/```graphviz\r?\n([\s\S]*?)```/g, (_, src) => { dotSources.push(src.trim()); });
-  const dotContent = dotSources.join('\n\n');
+  // Strip fenced code blocks (including graphviz)
+  text = text.replace(/```[^\n]*\n[\s\S]*?```/gm, '');
 
-  // Render graphviz blocks to SVG BEFORE stripping code blocks
-  const { markdown: renderedText, generatedImages } = await renderGraphvizBlocks(text);
-  text = renderedText;
+  // Strip image references completely (no IMAGE_REF tokens)
+  text = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
 
-  // Replace image references with [IMAGE_REF:path] BEFORE stripping other syntax
-  const imageRefs = [];
-  text = text.replace(/!\[([^\]]*)\]\(([^)]*)\)/g, (_, _alt, imgPath) => {
-    const token = `[IMAGE_REF:${imgPath.trim()}]`;
-    imageRefs.push(`[IMAGE_REF:${imgPath.trim()}]`);
-    return token;
-  });
+  // Strip remaining markdown syntax
+  text = text.replace(/`[^`]*`/g, '');
+  text = text.replace(/^#{1,6}\s+/gm, '');
+  text = text.replace(/\*{1,3}([^*\n]+)\*{1,3}/g, '$1');
+  text = text.replace(/_{1,3}([^_\n]+)_{1,3}/g, '$1');
+  text = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+  text = text.replace(/<[^>]+>/g, '');
 
-  // Strip remaining Markdown syntax (graphviz blocks already replaced above)
-  text = text.replace(/```[^\n]*\n[\s\S]*?```/gm, '');  // other fenced code blocks
-  text = text.replace(/`[^`]*`/g, '');                   // inline code
-  text = text.replace(/^#{1,6}\s+/gm, '');               // headings
-  text = text.replace(/\*{1,3}([^*\n]+)\*{1,3}/g, '$1'); // bold/italic *
-  text = text.replace(/_{1,3}([^_\n]+)_{1,3}/g, '$1');   // bold/italic _
-  text = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');   // non-image links
-  text = text.replace(/<[^>]+>/g, '');                    // residual HTML tags
-
-  text = normalise(text);
-  return { text, imageRefs, generatedImages, dotContent, mimeType: 'md' };
+  return { text: normalise(text), imageRefs: [], generatedImages: new Map(), dotContent: '', mimeType: 'md' };
 }
+
+// ── DOCX ───────────────────────────────────────────────────────────────────────
 
 async function extractDocx(buffer) {
   const result = await mammoth.extractRawText({ buffer });
-  // Strip residual HTML tags mammoth may produce in edge cases
-  let text = result.value.replace(/<[^>]+>/g, '');
-  text = normalise(text);
-  return { text, imageRefs: [], mimeType: 'docx' };
+  const text   = result.value.replace(/<[^>]+>/g, '');
+  return { text: normalise(text), imageRefs: [], generatedImages: new Map(), dotContent: '', mimeType: 'docx' };
 }
 
-// ---------------------------------------------------------------------------
+// ── TXT ────────────────────────────────────────────────────────────────────────
 
-/**
- * Normalises line endings to \n and trims leading/trailing whitespace.
- *
- * @param {string} text
- * @returns {string}
- */
+function extractTxt(buffer) {
+  return { text: normalise(buffer.toString('utf8')), imageRefs: [], generatedImages: new Map(), dotContent: '', mimeType: 'txt' };
+}
+
+// ── PPTX / PPT ─────────────────────────────────────────────────────────────────
+
+async function extractPptx(buffer) {
+  const zip = await JSZip.loadAsync(buffer);
+
+  // Slides live at ppt/slides/slide1.xml, slide2.xml, etc.
+  const slideNames = Object.keys(zip.files)
+    .filter(n => /^ppt\/slides\/slide\d+\.xml$/i.test(n))
+    .sort((a, b) => {
+      const num = s => parseInt(s.match(/\d+/)?.[0] ?? '0', 10);
+      return num(a) - num(b);
+    });
+
+  const slideTexts = [];
+  for (const name of slideNames) {
+    const xml = await zip.files[name].async('text');
+    // Extract text from <a:t> elements
+    const tokens = [...xml.matchAll(/<a:t[^>]*>([^<]*)<\/a:t>/g)]
+      .map(m => m[1].trim())
+      .filter(Boolean);
+    if (tokens.length) slideTexts.push(tokens.join(' '));
+  }
+
+  return { text: normalise(slideTexts.join('\n\n')), imageRefs: [], generatedImages: new Map(), dotContent: '', mimeType: 'pptx' };
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
 function normalise(text) {
-  return text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .trim();
+  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
 }
