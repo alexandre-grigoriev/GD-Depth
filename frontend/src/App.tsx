@@ -523,7 +523,7 @@ export default function App() {
                     if (activeChatId && !project.chats.find((c) => c.id === activeChatId)) setActiveChatId(null);
                   }}
                 >
-                  <FolderOpen className="h-5 w-5 flex-shrink-0" />
+                  <FolderOpen className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="projectName">{project.name}</span>
                   <div className="projectActions">
                     <button className="sidebarIconBtn" title="New chat"
@@ -543,7 +543,7 @@ export default function App() {
                     className={cn("chatRow", activeChatId === chat.id && "chatRowActive")}
                     onClick={() => { if (renamingChatId !== chat.id) { setActiveProjectId(project.id); setActiveChatId(chat.id); } }}
                   >
-                    <MessageSquare className="h-5 w-5 flex-shrink-0" />
+                    <MessageSquare className="h-3 w-3 flex-shrink-0" />
                     {renamingChatId === chat.id ? (
                       <input
                         className="chatRenameInput"

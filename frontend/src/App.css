@@ -64,7 +64,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter,
 .cardLite { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
 
 /* ===== Sidebar ===== */
-.sidebar { display: flex; flex-direction: column; min-height: 0; background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); overflow: hidden; }
+.sidebar { display: flex; flex-direction: column; min-height: 0; background: #FFFFFF; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); overflow: hidden; }
 
 .sidebarHeader { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .sidebarTitle { font-size: 18px; font-weight: 600; color: #111827; }
@@ -78,16 +78,17 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter,
 .sidebarInputActions { display: flex; gap: 6px; }
 
 .projectGroup { margin-bottom: 4px; }
-.projectRow { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; cursor: pointer; color: #374151; font-size: 18px; }
-.projectRow:hover { background: #f3f4f6; }
-.projectRowActive { background: #eff6ff; color: #1d4ed8; }
+.projectRow { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; cursor: pointer; color: #185FA5; font-size: 18px; background: transparent; }
+.projectRow:hover { background: #e4eef8; }
+.projectRowActive,
+.projectRowActive:hover { background: #378ADD; color: #FFFFFF; }
 .projectName { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .projectActions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
 .projectRow:hover .projectActions { opacity: 1; }
 
-.chatRow { display: flex; align-items: center; gap: 6px; padding: 6px 10px 6px 28px; border-radius: 8px; cursor: pointer; color: #6b7280; font-size: 18px; }
-.chatRow:hover { background: #f9fafb; }
-.chatRowActive { background: #dbeafe; color: #1d4ed8; }
+.chatRow { display: flex; align-items: center; gap: 6px; padding: 6px 10px 6px 28px; border-radius: 8px; cursor: pointer; color: #1F5F9E; font-size: 18px; background: transparent; }
+.chatRow:hover { background: #e4eef8; }
+.chatRowActive { background: #D0E4F5; color: #0C447C; }
 .chatRowTitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chatRow .sidebarIconBtn { opacity: 0; }
 .chatRow:hover .sidebarIconBtn { opacity: 1; }
