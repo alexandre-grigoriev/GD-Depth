@@ -28,7 +28,7 @@ export const config = {
   KB_DATA_SOURCE_ID: process.env.KB_DATA_SOURCE_ID,
 
   // S3 buckets (from python/settings.json s3_name / s3-images)
-  S3_BUCKET:        process.env.S3_BUCKET,         // document storage  → kb-ds-ai4gd
+  S3_BUCKET:        process.env.S3_BUCKET,         // document storage  → ai4gd
   S3_IMAGES_BUCKET: process.env.S3_IMAGES_BUCKET,  // image storage     → aisav-chat-images
   S3_DOC_PREFIX:    process.env.S3_DOC_PREFIX || 'gd-depth',  // key prefix inside S3_BUCKET
 

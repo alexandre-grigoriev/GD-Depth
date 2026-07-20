@@ -7,11 +7,65 @@
  * imagePublicUrl(key)           — returns the HTTPS URL for a stored image.
  */
 
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand,
+         ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 
 const s3 = new S3Client({ region: config.AWS_REGION });
+
+/**
+ * Verifies both buckets are reachable. Ingestion only writes to S3 as its final
+ * step, so without this a bad bucket name surfaces after several minutes of
+ * Claude enrichment instead of immediately.
+ *
+ * @throws {Error} if the document bucket is missing or inaccessible
+ */
+export async function assertBucketsReachable() {
+  for (const [name, bucket] of [['S3_BUCKET', config.S3_BUCKET], ['S3_IMAGES_BUCKET', config.S3_IMAGES_BUCKET]]) {
+    try {
+      await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+    } catch (err) {
+      const detail = `${name}="${bucket}" (region ${config.AWS_REGION}): ${err.name}`;
+      // Images degrade gracefully — a missing image bucket only loses figures.
+      if (name === 'S3_IMAGES_BUCKET') { logger.warn('S3 image bucket unreachable', { bucket, error: err.name }); continue; }
+      throw new Error(`S3 bucket unreachable — ${detail}`);
+    }
+  }
+}
+
+/**
+ * Deletes every object in a bucket, paginating through the full listing.
+ *
+ * Used by the knowledge-base reset: deleting only the keys recorded in SQLite
+ * leaves orphans (upload succeeded, DB insert did not) that stay in the Bedrock
+ * index forever. Listing is the only way to catch those.
+ *
+ * @param {string} bucket
+ * @returns {Promise<number>} objects deleted
+ */
+export async function deleteAllObjects(bucket) {
+  let deleted = 0;
+  let ContinuationToken;
+
+  do {
+    const page = await s3.send(new ListObjectsV2Command({ Bucket: bucket, ContinuationToken }));
+    const keys = (page.Contents ?? []).map(o => ({ Key: o.Key }));
+
+    if (keys.length > 0) {
+      // DeleteObjects caps at 1000 keys, the same cap ListObjectsV2 returns per page.
+      const result = await s3.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: keys, Quiet: true } }));
+      for (const err of result.Errors ?? []) logger.warn('S3 bulk delete failed for key', { bucket, key: err.Key, error: err.Message });
+      deleted += keys.length - (result.Errors?.length ?? 0);
+    }
+
+    // A truncated page always carries a token; without this the loop would stop early.
+    ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (ContinuationToken);
+
+  logger.info('S3 bucket emptied', { bucket, deleted });
+  return deleted;
+}
 
 /**
  * Uploads enriched document markdown to the Bedrock KB S3 data source bucket.

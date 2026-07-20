@@ -18,7 +18,7 @@ import { chunkText }               from './chunker.js';
 import { resolveChunkImages }      from './image_resolver.js';
 import { generateDocumentSummary, enrichChunk } from './enricher.js';
 import { upsertDocument }          from '../graph/queries/document.js';
-import { uploadDocument }          from '../aws/s3.js';
+import { uploadDocument, assertBucketsReachable } from '../aws/s3.js';
 import { syncKnowledgeBase }       from '../aws/bedrock.js';
 import { config }                  from '../utils/config.js';
 import { logger }                  from '../utils/logger.js';
@@ -60,6 +60,9 @@ export async function ingestDocument({ buffer, filename, uploadedBy, documentDat
   const imageMap = zipImages instanceof Map ? zipImages : new Map();
   const mdFilePath      = zipDir ? `${zipDir}/${filename}` : filename;
   const resolvedFilepath = filepath ?? mdFilePath;
+
+  // ── Step 0: Fail fast on S3 misconfiguration, before any LLM work ────────────
+  await assertBucketsReachable();
 
   // ── Step 1: Text extraction ──────────────────────────────────────────────────
   let extraction;

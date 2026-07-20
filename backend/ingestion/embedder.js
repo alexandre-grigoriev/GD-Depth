@@ -36,6 +36,20 @@ export async function callGeminiJson(system, prompt, { maxTokens = 1000 } = {}) 
   return callClaudeJson(system, prompt, { maxTokens });
 }
 
+/**
+ * Claude commonly wraps JSON responses in a ```json fence despite instructions.
+ * Strips the fence so the caller can parse the payload directly. A truncated
+ * response has no closing fence, so the trailing fence is optional.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function stripCodeFence(text) {
+  const s = text.trim();
+  const fenced = /^```(?:json)?\s*\n([\s\S]*?)(?:\n```)?\s*$/.exec(s);
+  return fenced ? fenced[1].trim() : s;
+}
+
 export async function callClaudeJson(system, prompt, { maxTokens = 1000 } = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -51,7 +65,7 @@ export async function callClaudeJson(system, prompt, { maxTokens = 1000 } = {}) 
         }),
       }));
       const body = JSON.parse(new TextDecoder().decode(res.body));
-      return body.content[0].text;
+      return stripCodeFence(body.content[0].text);
     } catch (err) {
       const throttled = err.name === 'ThrottlingException' || err.$metadata?.httpStatusCode === 429;
       if (throttled && attempt === 0) {

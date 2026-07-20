@@ -69,18 +69,35 @@ function _sseFinish(jobId) {
 
 // ── Single file upload (PDF / Markdown / DOCX) ────────────────────────────────
 
-router.post("/api/knowledge-base/upload", requireAuth, requireContributor, kbUpload.any(), async (req, res) => {
+// Ingestion runs far longer than any proxy read timeout (one Claude call per chunk),
+// so the request returns a jobId immediately and progress streams over SSE — same
+// job store and /batch-progress endpoint as the batch upload.
+router.post("/api/knowledge-base/upload", requireAuth, requireContributor, kbUpload.any(), (req, res) => {
   const file = req.files?.[0];
   if (!file) return res.status(400).json({ error: "File required (pdf, md, docx, txt, pptx)" });
-  try {
-    const filename     = Buffer.from(file.originalname, "latin1").toString("utf8");
-    const documentDate = req.body.documentDate?.trim() || null;
-    const result = await ingestDocument({ buffer: file.buffer, filename, uploadedBy: req.session.user.id, documentDate });
-    res.json({ ok: true, ...result });
-  } catch (e) {
-    logger.error("KB", "Single upload error:", e.message);
-    res.status(500).json({ error: e.message });
-  }
+
+  const filename     = Buffer.from(file.originalname, "latin1").toString("utf8");
+  const documentDate = req.body.documentDate?.trim() || null;
+  const userId       = req.session.user.id;
+
+  const jobId = crypto.randomUUID();
+  _jobs.set(jobId, { res: null, queue: [], done: false });
+  res.json({ jobId });
+
+  (async () => {
+    _sseEmit(jobId, "processing", { filename });
+    try {
+      const r = await ingestDocument({
+        buffer: file.buffer, filename, uploadedBy: userId, documentDate,
+        onProgress: (step) => _sseEmit(jobId, "step", { filename, step }),
+      });
+      _sseEmit(jobId, "file_done", { filename, chunkCount: r.chunkCount });
+    } catch (e) {
+      logger.error("Single upload failed", { filename, error: e.message, stack: e.stack });
+      _sseEmit(jobId, "file_error", { filename, error: e.message });
+    }
+    _sseFinish(jobId);
+  })();
 });
 
 // ── Batch upload — starts SSE job, returns jobId immediately ──────────────────
@@ -321,7 +338,22 @@ router.post("/api/knowledge-base/search", requireAuth, express.json(), async (re
     const sources = [...seen.entries()].map(([filename, documentDate]) => ({ filename, documentDate }));
     res.json({ chunks, chunkFiles, chunkImages, sources });
   } catch (e) {
-    logger.error("KB", "Search error:", e.message);
+    logger.error("KB search failed", { error: e.message });
     res.json({ chunks: [] });
   }
+});
+
+// ── Error handler ──────────────────────────────────────────────────────────────
+// Multer rejects oversized uploads before the route runs. Without this, Express
+// answers with its default HTML error page, which the frontend cannot parse —
+// the user just sees "Upload failed" with no reason.
+
+router.use((err, _req, res, next) => {
+  if (res.headersSent) return next(err);
+  const limitMb = Math.round((err.field === "files" ? 200 * 1024 * 1024 : 50 * 1024 * 1024) / 1024 / 1024);
+  const message = err.code === "LIMIT_FILE_SIZE"
+    ? `File too large — the limit is ${limitMb} MB`
+    : err.message;
+  logger.error("KB upload rejected", { code: err.code, field: err.field, error: err.message });
+  res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 500).json({ error: message });
 });

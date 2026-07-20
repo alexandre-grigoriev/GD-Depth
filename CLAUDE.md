@@ -65,7 +65,7 @@ This is a RAG (Retrieval-Augmented Generation) chat application backed by **Amaz
 ### Storage
 
 - **SQLite** (`users.db`): users, sessions, projects, chats, messages, **documents** table
-- **S3 `kb-ds-ai4gd`** (`S3_BUCKET`): enriched markdown files at `{S3_DOC_PREFIX}/{docId}/{basename}.md`
+- **S3 `ai4gd`** (`S3_BUCKET`): enriched markdown files at `{S3_DOC_PREFIX}/{docId}/{basename}.md`
 - **S3 `aisav-chat-images`** (`S3_IMAGES_BUCKET`): extracted images at `{docId}/{zipRelPath}` — must be **public-read**
 - **Bedrock KB** (`BD7PNUTAKG`): managed vector index, synced from `S3_BUCKET` after each upload
 

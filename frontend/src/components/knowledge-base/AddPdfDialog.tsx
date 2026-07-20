@@ -9,6 +9,19 @@ interface ProgressEntry { filename: string; chunkCount?: number; error?: string;
 const ACCEPT = ".pdf,.md,.markdown,.docx,.txt,.pptx,.ppt";
 const ACCEPT_LABEL = "PDF · MD · DOCX · TXT · PPTX";
 
+// Must stay in sync with nginx client_max_body_size and the multer fileSize limit.
+// Checked client-side so an oversized archive is rejected instantly instead of
+// after uploading gigabytes only to hit a 413.
+const MAX_UPLOAD_MB    = 200;
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+const MAX_SINGLE_MB    = 50;   // kbUpload fileSize limit
+const MAX_SINGLE_BYTES = MAX_SINGLE_MB * 1024 * 1024;
+
+function formatSize(bytes: number): string {
+  const mb = bytes / 1024 / 1024;
+  return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(1)} MB`;
+}
+
 export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<"add" | "batch" | "docs" | "manage">("add");
   const [resetting, setResetting] = useState(false);
@@ -20,6 +33,7 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
   const [file, setFile] = useState<File | null>(null);
   const [documentDate, setDocumentDate] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadStep, setUploadStep] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -50,7 +64,7 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   useEffect(() => {
     if (open) {
-      setFile(null); setDocumentDate(""); setError(""); setSuccess("");
+      setFile(null); setDocumentDate(""); setError(""); setSuccess(""); setUploadStep("");
       setBatchFile(null); setProgress([]); setCurrentFile(null);
       setTab("add"); setResetConfirm(false);
       loadDocs();
@@ -63,6 +77,24 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
   }, [progress, currentFile]);
 
   function clearTab() { setError(""); setSuccess(""); }
+
+  /**
+   * Builds an error message from a failed response. A JSON `error` field is used
+   * when present; otherwise the status is surfaced, because rejections by nginx
+   * (413 on an oversized body, 502 when the backend is down) never reach the API
+   * and return an HTML page that carries no parsable message.
+   */
+  async function describeFailure(res: Response): Promise<string> {
+    const body = await res.text().catch(() => "");
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed?.error) return parsed.error;
+    } catch { /* not JSON — an nginx or proxy error page */ }
+
+    if (res.status === 413) return "File too large — rejected by the server (limit 200 MB)";
+    if (res.status === 502 || res.status === 504) return `Server unavailable (HTTP ${res.status}) — the backend may be down or still starting`;
+    return `Upload failed — HTTP ${res.status} ${res.statusText}`;
+  }
 
   async function doReset() {
     setResetting(true);
@@ -105,24 +137,37 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   // ── Single file upload ──────────────────────────────────────────────────────
 
+  // Ingestion takes minutes, so the POST only starts a job — progress arrives over SSE.
   async function doUpload() {
     if (!file) return;
-    setUploading(true); setError(""); setSuccess("");
+    setUploading(true); setError(""); setSuccess(""); setUploadStep("Uploading…");
+
+    let jobId: string;
     try {
       const form = new FormData();
       form.append("file", file);
       if (documentDate) form.append("documentDate", documentDate);
       const res = await fetch("/api/knowledge-base/upload", { method: "POST", credentials: "include", body: form });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error ?? "Upload failed"); }
-      const data = await res.json();
-      setSuccess(`"${data.filename}" ingested — ${data.chunkCount} chunks.`);
-      setFile(null);
-      loadDocs();
+      if (!res.ok) throw new Error(await describeFailure(res));
+      jobId = (await res.json()).jobId;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setUploading(false);
+      setUploading(false); setUploadStep("");
+      return;
     }
+
+    const es = new EventSource(`/api/knowledge-base/batch-progress/${jobId}`);
+    es.addEventListener("processing", () => setUploadStep("Extracting text…"));
+    es.addEventListener("step", (e) => setUploadStep(JSON.parse(e.data).step));
+    es.addEventListener("file_done", (e) => {
+      const { filename, chunkCount } = JSON.parse(e.data);
+      setSuccess(`"${filename}" ingested — ${chunkCount} chunks.`);
+      setFile(null);
+      loadDocs();
+    });
+    es.addEventListener("file_error", (e) => setError(JSON.parse(e.data).error ?? "Ingestion failed"));
+    es.addEventListener("done", () => { es.close(); setUploading(false); setUploadStep(""); });
+    es.onerror = () => { es.close(); setUploading(false); setUploadStep(""); };
   }
 
   // ── Batch upload with SSE progress ─────────────────────────────────────────
@@ -137,7 +182,7 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
       const form = new FormData();
       form.append("files", batchFile);
       const res = await fetch("/api/knowledge-base/upload-batch", { method: "POST", credentials: "include", body: form });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error ?? "Upload failed"); }
+      if (!res.ok) throw new Error(await describeFailure(res));
       jobId = (await res.json()).jobId;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
@@ -263,7 +308,7 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
     <AnimatePresence>
       {open && (
         <motion.div className="modalOverlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="modalBackdrop" onClick={batchRunning ? undefined : onClose} />
+          <div className="modalBackdrop" />
           <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -301,9 +346,14 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
                           Choose file
                           <input type="file" accept={ACCEPT} className="presFileInput" onChange={e => {
                             const f = e.target.files?.[0] ?? null;
+                            setError(""); setSuccess("");
+                            if (f && f.size > MAX_SINGLE_BYTES) {
+                              setFile(null);
+                              setError(`"${f.name}" is ${formatSize(f.size)} — the limit is ${MAX_SINGLE_MB} MB for a single document.`);
+                              return;
+                            }
                             setFile(f);
                             if (f) setDocumentDate(new Date(f.lastModified).toISOString().slice(0, 10));
-                            setError(""); setSuccess("");
                           }} />
                         </label>
                         <span className="presFileName">{file ? file.name : "No file chosen"}</span>
@@ -315,7 +365,7 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
                     </div>
                     {error && <div className="authError" style={{ marginTop: 8 }}>{error}</div>}
                     {success && <div style={{ fontSize: 13, color: "#16a34a", marginTop: 8 }}>{success}</div>}
-                    {uploading && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>Ingesting document — extracting text, enriching chunks and building graph… this may take a minute.</div>}
+                    {uploading && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>{uploadStep || "Ingesting document…"}</div>}
                   </div>
                   <div className="presFooter">
                     <button className="presCancelBtn" onClick={onClose}>Cancel</button>
@@ -344,8 +394,14 @@ export function AddPdfDialog({ open, onClose }: { open: boolean; onClose: () => 
                             accept=".zip"
                             className="presFileInput"
                             onChange={e => {
-                              setBatchFile(e.target.files?.[0] ?? null);
+                              const f = e.target.files?.[0] ?? null;
                               setProgress([]); setCurrentFile(null); setError("");
+                              if (f && f.size > MAX_UPLOAD_BYTES) {
+                                setBatchFile(null);
+                                setError(`"${f.name}" is ${formatSize(f.size)} — the limit is ${MAX_UPLOAD_MB} MB. Split the archive into smaller ZIPs.`);
+                                return;
+                              }
+                              setBatchFile(f);
                             }}
                           />
                         </label>

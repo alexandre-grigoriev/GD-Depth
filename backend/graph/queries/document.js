@@ -3,9 +3,10 @@
  */
 
 import { db }              from '../../shared.js';
-import { deleteDocument as deleteS3Doc, deleteImage } from '../../aws/s3.js';
+import { deleteDocument as deleteS3Doc, deleteImage, deleteAllObjects } from '../../aws/s3.js';
 import { imagePublicUrl }  from '../../aws/s3.js';
 import { syncKnowledgeBase } from '../../aws/bedrock.js';
+import { config }          from '../../utils/config.js';
 import { logger }          from '../../utils/logger.js';
 
 export function upsertDocument({ docId, filename, filepath, mimeType, language, summary, uploadedAt, wordCount, documentDate, s3Key, images = [] }) {
@@ -56,16 +57,21 @@ export async function deleteDocument(docId) {
   logger.info('Document deleted', { docId });
 }
 
+/**
+ * Wipes the knowledge base: both S3 buckets are emptied by listing, not by
+ * following SQLite rows, so orphaned objects (uploaded before a failed DB write)
+ * are removed too — otherwise they stay in the Bedrock index permanently.
+ */
 export async function resetDocuments() {
-  const rows = db.prepare('SELECT s3_key, images FROM documents').all();
-  for (const row of rows) {
-    if (row.s3_key) await deleteS3Doc(row.s3_key).catch(() => {});
-    const keys = JSON.parse(row.images ?? '[]');
-    for (const key of keys) await deleteImage(key).catch(() => {});
-  }
+  const docs   = await deleteAllObjects(config.S3_BUCKET);
+  const images = await deleteAllObjects(config.S3_IMAGES_BUCKET).catch(err => {
+    logger.warn('Image bucket wipe failed', { error: err.message });
+    return 0;
+  });
+
   db.prepare('DELETE FROM documents').run();
   await syncKnowledgeBase().catch(() => {});
-  logger.info('Knowledge base reset');
+  logger.info('Knowledge base reset', { documentsDeleted: docs, imagesDeleted: images });
 }
 
 /** Overwrites the summary and image-key list for an existing document. */

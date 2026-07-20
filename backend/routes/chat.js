@@ -5,7 +5,7 @@
  * Body: { message: string, history: {role, text}[], lang?: string }
  * Response: { text: string, images: string[] }
  *
- * The frontend sends messages here instead of calling Gemini directly.
+ * The frontend sends messages here instead of calling front model directly.
  * This keeps AWS credentials server-side and allows the KB search to happen
  * in the same process without CORS issues.
  */
